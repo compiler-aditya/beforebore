@@ -1,0 +1,5 @@
+.quickstart-bootstrap.log
+convex-app/.agents/
+convex-app/.claude/
+convex-app/.cursor/
+convex-app/.quickstart-runbook.md
