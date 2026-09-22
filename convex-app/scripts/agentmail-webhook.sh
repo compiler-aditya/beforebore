@@ -37,6 +37,11 @@ echo "detail:  $detail"
 echo "webhook: ${webhook_id:-none}"
 
 if [ -z "$secret" ]; then
+  stored_secret="$(npx convex env get AGENTMAIL_WEBHOOK_SECRET $DEPLOY_FLAG 2>/dev/null || true)"
+  if [ -n "$stored_secret" ]; then
+    echo "secret:  already stored as AGENTMAIL_WEBHOOK_SECRET"
+    exit 0
+  fi
   echo "secret:  not returned — set AGENTMAIL_WEBHOOK_SECRET manually from the AgentMail dashboard"
   exit 1
 fi
