@@ -96,7 +96,7 @@ readout with readable labels (`components/BeforeBoreDashboard.tsx`).
 Verified on the dev deployment: both new event types insert and read back with
 the expected actor, type, and summary. Type-check and lint are clean.
 
-### 2026-09-22 - ce2601d
+### 2026-09-22 - 8e47e01
 
 Made the pre-screen model provider swappable. `selectModelProvider` prefers
 OpenAI when `OPENAI_API_KEY` is present and falls back to Gemini when only
