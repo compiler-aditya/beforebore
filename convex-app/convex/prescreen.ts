@@ -247,7 +247,7 @@ export const run = action({
 
     try {
       const scrapeResponse = await fetchWithTimeout(
-        "https://api.firecrawl.dev/v1/scrape",
+        "https://api.firecrawl.dev/v2/scrape",
         {
           method: "POST",
           headers: {

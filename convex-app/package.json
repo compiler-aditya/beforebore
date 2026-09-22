@@ -6,7 +6,7 @@
     "dev": "next dev",
     "typecheck": "tsc --noEmit",
     "build": "npm run typecheck && node scripts/build.mjs",
-    "deploy": "npx @convex-dev/static-hosting deploy --dist out",
+    "deploy": "npx convex deploy --yes && npx @convex-dev/static-hosting upload --build --prod --dist out",
     "lint": "eslint ."
   },
   "dependencies": {
@@ -28,6 +28,7 @@
     "npm-run-all2": "^5.0.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
+    "svix": "^2.5.0",
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7"
   },

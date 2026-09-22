@@ -1,5 +1,6 @@
 import { httpRouter } from "convex/server";
 import { registerStaticRoutes } from "@convex-dev/static-hosting";
+import { Webhook } from "svix";
 
 import { components, internal } from "./_generated/api";
 import { env, httpAction } from "./_generated/server";
@@ -45,14 +46,6 @@ export const agentMailWebhook = httpAction(async (ctx, request) => {
     );
   }
 
-  const suppliedSecret =
-    request.headers.get("x-agentmail-webhook-secret") ??
-    request.headers.get("x-webhook-secret") ??
-    request.headers.get("x-agentmail-signature");
-  if (!suppliedSecret || suppliedSecret !== secret) {
-    return jsonResponse({ status: "unauthorized" }, 401);
-  }
-
   const rawBody = await request.text();
   if (rawBody.length > 1_000_000) {
     return jsonResponse({ status: "payload_too_large" }, 413);
@@ -60,9 +53,14 @@ export const agentMailWebhook = httpAction(async (ctx, request) => {
 
   let parsed: unknown;
   try {
+    new Webhook(secret).verify(rawBody, {
+      "svix-id": request.headers.get("svix-id") ?? "",
+      "svix-timestamp": request.headers.get("svix-timestamp") ?? "",
+      "svix-signature": request.headers.get("svix-signature") ?? "",
+    });
     parsed = JSON.parse(rawBody) as unknown;
   } catch {
-    return jsonResponse({ status: "invalid_json" }, 400);
+    return jsonResponse({ status: "unauthorized" }, 401);
   }
   if (!isRecord(parsed)) {
     return jsonResponse({ status: "invalid_payload" }, 400);
