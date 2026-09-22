@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  output: "export",
   outputFileTracingRoot: process.cwd(),
   // The build script runs TypeScript 7 before Next.js. Next still needs the
   // older TypeScript compiler API for configuration and editor tooling.

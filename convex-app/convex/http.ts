@@ -1,6 +1,7 @@
 import { httpRouter } from "convex/server";
+import { registerStaticRoutes } from "@convex-dev/static-hosting";
 
-import { internal } from "./_generated/api";
+import { components, internal } from "./_generated/api";
 import { env, httpAction } from "./_generated/server";
 
 const http = httpRouter();
@@ -110,5 +111,7 @@ http.route({
   method: "POST",
   handler: agentMailWebhook,
 });
+
+registerStaticRoutes(http, components.staticHosting);
 
 export default http;

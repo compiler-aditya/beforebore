@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export function PasskeySignIn() {
+export function PasskeySignIn({ onExploreDemo }: { onExploreDemo?: () => void }) {
   const [username, setUsername] = useState("");
   const [error, setError] = useState<string | null>(null);
   const { signIn, pending } = useUsernamePasskeySignIn({
@@ -23,7 +23,7 @@ export function PasskeySignIn() {
     event.preventDefault();
     setError(null);
     if (typeof window.PublicKeyCredential === "undefined") {
-      setError("This browser does not support passkeys. Open http://localhost:62731/ in Chrome or Safari to sign in.");
+      setError(`This browser does not support passkeys. Open ${window.location.origin} in Chrome or Safari to sign in.`);
       return;
     }
     try {
@@ -56,6 +56,7 @@ export function PasskeySignIn() {
             {pending ? <Loader2 className="animate-spin" /> : <Fingerprint />} {pending ? "Waiting for passkey…" : "Continue with passkey"}
           </Button>
         </form>
+        {onExploreDemo && <Button type="button" variant="outline" onClick={onExploreDemo} className="mt-3 h-11 w-full border-zinc-600 bg-transparent text-zinc-200 hover:bg-zinc-800 hover:text-white">Explore the read-only sample</Button>}
         <div className="mt-7 flex gap-2 border-t border-zinc-800 pt-5 text-xs leading-5 text-zinc-500"><ShieldCheck className="h-4 w-4 shrink-0 text-emerald-400" /><span>This is a synthetic demo, not authorization to perform construction work.</span></div>
       </div>
     </main>

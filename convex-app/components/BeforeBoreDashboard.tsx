@@ -374,9 +374,9 @@ function NewPermitPanel({
   );
 }
 
-function BeforeBoreDashboardContent({ liveEnabled }: { liveEnabled: boolean }) {
+function BeforeBoreDashboardContent({ liveEnabled, previewMode = false, onExitPreview }: { liveEnabled: boolean; previewMode?: boolean; onExitPreview?: () => void }) {
   const { signOut } = useAuthActions();
-  const currentUser = useQuery(api.users.current);
+  const currentUser = useQuery(api.users.current, liveEnabled ? {} : "skip");
   const [selectedId, setSelectedId] = useState("BB-2049");
   const [showNewPermit, setShowNewPermit] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -588,15 +588,15 @@ function BeforeBoreDashboardContent({ liveEnabled }: { liveEnabled: boolean }) {
               <div className="flex items-center gap-2 text-[11px] font-medium text-zinc-500">
                 <span>Projects</span><span>/</span><span>{dashboard?.project.name ?? "Alder & 5th"}</span><span>/</span><span className="text-zinc-300">Control room</span>
               </div>
-              <div className="mt-1 flex items-center gap-2 text-xs text-zinc-400"><Wifi className={cn("h-3.5 w-3.5", dashboard ? "text-emerald-400" : "text-amber-400")} /> {dashboard ? "Convex-synced synthetic workspace" : "Local demo snapshot"}</div>
+              <div className="mt-1 flex items-center gap-2 text-xs text-zinc-400"><Wifi className={cn("h-3.5 w-3.5", dashboard ? "text-emerald-400" : "text-amber-400")} /> {dashboard ? "Convex-synced synthetic workspace" : "Read-only demo snapshot"}</div>
             </div>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
-            <span className="hidden text-xs text-zinc-400 md:inline">{currentUser?.username}</span>
-            <Button type="button" variant="ghost" onClick={() => void signOut()} className="text-xs text-zinc-300 hover:bg-zinc-800 hover:text-white">Sign out</Button>
+            {liveEnabled && <span className="hidden text-xs text-zinc-400 md:inline">{currentUser?.username}</span>}
+            {previewMode ? <Button type="button" variant="ghost" onClick={onExitPreview} className="text-xs text-zinc-300 hover:bg-zinc-800 hover:text-white">Sign in</Button> : <Button type="button" variant="ghost" onClick={() => void signOut()} className="text-xs text-zinc-300 hover:bg-zinc-800 hover:text-white">Sign out</Button>}
             {searchOpen && <Input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} aria-label="Search permits" placeholder="Permit, location, or trade" className="hidden h-9 w-52 border-zinc-700 bg-zinc-900 text-xs text-white sm:block" />}
             <button type="button" onClick={() => { setSearchOpen((open) => !open); setSearchTerm(""); }} className="hidden h-9 items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-900 px-3 text-xs text-zinc-400 hover:border-zinc-600 hover:text-white sm:flex"><Search className="h-3.5 w-3.5" /> {searchOpen ? "Close search" : "Search permits"}</button>
-            <Button onClick={() => setShowNewPermit(true)} className="h-10 bg-amber-400 px-4 font-bold text-zinc-950 hover:bg-amber-300"><Plus /> <span className="hidden sm:inline">New permit</span></Button>
+            {liveEnabled && <Button onClick={() => setShowNewPermit(true)} className="h-10 bg-amber-400 px-4 font-bold text-zinc-950 hover:bg-amber-300"><Plus /> <span className="hidden sm:inline">New permit</span></Button>}
           </div>
         </header>
 
@@ -607,7 +607,7 @@ function BeforeBoreDashboardContent({ liveEnabled }: { liveEnabled: boolean }) {
               <h1 className="text-3xl font-semibold tracking-[-0.035em] text-white sm:text-4xl">Every cut starts with evidence.</h1>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">Explore concrete penetration requests, missing clearances, and evidence gates before the drill touches the slab.</p>
               <p className="mt-3 max-w-2xl rounded-lg border border-amber-400/35 bg-amber-400/10 px-3 py-2 text-xs leading-5 text-amber-100">Synthetic demonstration only. Green status and simulated gate transitions are not site approval or authorization to cut concrete.</p>
-              {!liveEnabled && <p className="mt-3 max-w-2xl rounded-lg border border-amber-400/25 bg-amber-400/10 px-3 py-2 text-xs leading-5 text-amber-100/80">Demo data is visible locally. Live Convex persistence is paused because the current deployment has exceeded its free-plan limit.</p>}
+              {!liveEnabled && <p className="mt-3 max-w-2xl rounded-lg border border-amber-400/25 bg-amber-400/10 px-3 py-2 text-xs leading-5 text-amber-100/80">Read-only sample project. Sign in to create and track live requests.</p>}
               {liveEnabled && dashboard === null && <div className="mt-4 flex flex-wrap items-center gap-3 rounded-lg border border-sky-400/25 bg-sky-400/10 px-3 py-2.5 text-xs text-sky-100"><span>Workspace not seeded yet.</span><Button type="button" onClick={handleSeed} disabled={isSeeding} size="sm" className="h-8 bg-sky-300 px-3 font-bold text-sky-950 hover:bg-sky-200">{isSeeding ? <Loader2 className="animate-spin" /> : <Plus />} {isSeeding ? "Initializing…" : "Initialize demo workspace"}</Button></div>}
             </div>
             <div className="flex items-center gap-2 text-xs text-zinc-500"><CalendarDays className="h-4 w-4" /> Synthetic project scenario</div>
@@ -636,7 +636,7 @@ function BeforeBoreDashboardContent({ liveEnabled }: { liveEnabled: boolean }) {
           <section className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(390px,0.8fr)]">
             <Card className="border-zinc-700 bg-[#13161b] shadow-none">
               <CardHeader className="flex-row items-center justify-between space-y-0 border-b border-zinc-700 px-5 py-4">
-                <div><CardTitle className="text-base text-white">Permit queue</CardTitle><CardDescription className="mt-1 text-xs text-zinc-500">{dashboard ? `${dashboard.permits.length} synthetic requests in Convex` : "Demo queue · connect Convex to persist changes"}</CardDescription></div>
+                <div><CardTitle className="text-base text-white">Permit queue</CardTitle><CardDescription className="mt-1 text-xs text-zinc-500">{dashboard ? `${dashboard.permits.length} synthetic requests in Convex` : "Four sample requests · sign in for live data"}</CardDescription></div>
                 <Badge tone="neutral">{queuePermits.length} shown</Badge>
               </CardHeader>
               <CardContent className="p-0">
@@ -699,7 +699,7 @@ function BeforeBoreDashboardContent({ liveEnabled }: { liveEnabled: boolean }) {
                         </li>
                       ))}
                     </ol>
-                  ) : <p className="mt-2 text-[11px] leading-4 text-zinc-500">Connect the Convex demo to inspect recorded events.</p>}
+                  ) : <p className="mt-2 text-[11px] leading-4 text-zinc-500">Sign in to inspect the live audit trail.</p>}
                 </div>
 
                 <div className="mt-5 rounded-xl border border-sky-400/20 bg-sky-400/[0.06] p-4">
@@ -789,11 +789,20 @@ class DashboardErrorBoundary extends Component<
   }
 }
 
+function GuestAccess() {
+  const [exploring, setExploring] = useState(false);
+  return exploring ? (
+    <BeforeBoreDashboardContent liveEnabled={false} previewMode onExitPreview={() => setExploring(false)} />
+  ) : (
+    <PasskeySignIn onExploreDemo={() => setExploring(true)} />
+  );
+}
+
 export function BeforeBoreDashboard() {
   return (
     <>
       <AuthLoading><div className="flex min-h-screen items-center justify-center bg-[#0c0e12] text-sm text-zinc-400"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Restoring session…</div></AuthLoading>
-      <Unauthenticated><PasskeySignIn /></Unauthenticated>
+      <Unauthenticated><GuestAccess /></Unauthenticated>
       <Authenticated>
         <DashboardErrorBoundary>
           <BeforeBoreDashboardContent liveEnabled />

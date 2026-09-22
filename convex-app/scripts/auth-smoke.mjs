@@ -1,5 +1,5 @@
-// Dev-only integration check with an ephemeral software WebAuthn authenticator.
-// Run against a development deployment; it creates one synthetic test account.
+// Integration check with an ephemeral software WebAuthn authenticator.
+// Restricted to this project's known deployments; creates one synthetic test account.
 import { createHash, generateKeyPairSync, randomBytes, sign } from "node:crypto";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../convex/_generated/api.js";
@@ -27,14 +27,16 @@ function cbor(value) {
 }
 
 const deployment = process.env.NEXT_PUBLIC_CONVEX_URL;
-if (!deployment || !deployment.includes("next-ocelot-989.convex.cloud")) {
-  throw new Error("This smoke test is restricted to the BeforeBore dev deployment.");
-}
+const allowedOrigins = new Map([
+  ["https://next-ocelot-989.convex.cloud", "http://localhost:62731"],
+  ["https://tacit-anaconda-976.convex.cloud", "https://tacit-anaconda-976.convex.site"],
+]);
+const origin = allowedOrigins.get(deployment);
+if (!origin) throw new Error("This smoke test is restricted to known BeforeBore deployments.");
 
 const client = new ConvexHttpClient(deployment);
 const username = `smoke-${Date.now()}`;
-const rpId = "localhost";
-const origin = "http://localhost:62731";
+const rpId = new URL(origin).hostname;
 const credentialId = randomBytes(32);
 const encodedId = credentialId.toString("base64url");
 const { privateKey, publicKey } = generateKeyPairSync("ec", { namedCurve: "prime256v1" });
@@ -77,7 +79,11 @@ if (signUp.status !== "complete") throw new Error(`Registration failed: ${signUp
 client.setAuth(signUp.tokens.accessToken);
 const current = await client.query(api.users.current, {});
 if (current.username !== username) throw new Error("Authenticated user lookup failed.");
-const dashboard = await client.query(api.dashboard.get, { projectCode: "ALDER-5" });
+let dashboard = await client.query(api.dashboard.get, { projectCode: "ALDER-5" });
+if (!dashboard && process.env.AUTH_SMOKE_SEED === "1") {
+  await client.mutation(api.demo.seedDemo, {});
+  dashboard = await client.query(api.dashboard.get, { projectCode: "ALDER-5" });
+}
 if (!dashboard?.project) throw new Error("Authenticated dashboard lookup failed.");
 
 client.clearAuth();

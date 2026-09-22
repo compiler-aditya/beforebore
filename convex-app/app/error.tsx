@@ -1,22 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
-
-export default function ChefIsCooking({
-  error: _error,
+export default function ErrorPage({
   reset,
 }: {
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  // Auto-retry every 1.5s — Chef is almost certainly finishing the
-  // component reference that just broke. If it's a real bug that
-  // persists, the user can ask Chef to fix it in the bubble.
-  useEffect(() => {
-    const t = setInterval(reset, 1500);
-    return () => clearInterval(t);
-  }, [reset]);
-
   return (
     <main
       style={{
@@ -24,29 +13,30 @@ export default function ChefIsCooking({
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        minHeight: "60vh",
+        minHeight: "100vh",
         gap: 12,
         padding: 40,
         textAlign: "center",
         fontFamily: "inherit",
+        background: "#0c0e12",
+        color: "#f4f4f5",
       }}
     >
-      <img
-        src="https://chef.convex.dev/chef.svg"
-        alt=""
-        width={72}
-        height={42}
-      />
       <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>
-        Chef is still cooking…
+        BeforeBore couldn’t load this view.
       </h2>
       <p
-        style={{ color: "#6b7280", maxWidth: 420, lineHeight: 1.5, margin: 0 }}
+        style={{ color: "#a1a1aa", maxWidth: 420, lineHeight: 1.5, margin: 0 }}
       >
-        A piece of the page is mid-update. The page will refresh on its
-        own in a moment. If the same error keeps showing for more than
-        ~10 seconds, ask Chef to fix it in the bubble (lower right).
+        Your data has not been changed. Please try loading the view again.
       </p>
+      <button
+        type="button"
+        onClick={reset}
+        style={{ background: "#fbbf24", color: "#09090b", border: 0, borderRadius: 8, padding: "10px 16px", fontWeight: 700, cursor: "pointer" }}
+      >
+        Try again
+      </button>
     </main>
   );
 }
