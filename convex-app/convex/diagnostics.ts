@@ -198,7 +198,14 @@ async function checkAgentMail(): Promise<ProviderCheck> {
       { method: "GET", headers: { Authorization: `Bearer ${apiKey}` } },
       20_000,
     );
-    if (!response.ok) return await describeFailure("agentmail", response);
+    if (!response.ok) {
+      return {
+        provider: "agentmail",
+        configured: true,
+        ok: false,
+        detail: `HTTP ${response.status} while listing the configured inbox.`,
+      };
+    }
     const payload: unknown = await response.json();
     const inboxes = isRecord(payload) && Array.isArray(payload.inboxes) ? payload.inboxes : [];
     const ids = inboxes
@@ -206,12 +213,16 @@ async function checkAgentMail(): Promise<ProviderCheck> {
         isRecord(inbox) && typeof inbox.inbox_id === "string" ? inbox.inbox_id : null,
       )
       .filter((id): id is string => id !== null);
-    const configuredInbox = env.AGENTMAIL_INBOX_ID ?? null;
+    const configuredInbox = env.AGENTMAIL_INBOX_ID;
+    const configuredInboxFound =
+      typeof configuredInbox === "string" && ids.includes(configuredInbox);
     return {
       provider: "agentmail",
       configured: true,
-      ok: ids.length > 0,
-      detail: `${ids.length} inbox(es): ${ids.slice(0, 5).join(", ") || "none"}. AGENTMAIL_INBOX_ID=${configuredInbox ?? "unset"}.`,
+      ok: configuredInboxFound,
+      detail: configuredInboxFound
+        ? `AgentMail authenticated; configured coordination inbox found among ${ids.length} accessible inbox(es).`
+        : "AgentMail authenticated, but the configured coordination inbox was not found.",
     };
   } catch (error) {
     return {
