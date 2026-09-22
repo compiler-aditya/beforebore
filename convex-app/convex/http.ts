@@ -84,7 +84,8 @@ export const agentMailWebhook = httpAction(async (ctx, request) => {
     return jsonResponse({ status: "ignored", reason: "no_permit_number" });
   }
 
-  const receivedAtValue = message.received_at ?? message.receivedAt;
+  const receivedAtValue =
+    message.received_at ?? message.receivedAt ?? message.timestamp;
   const receivedAt =
     typeof receivedAtValue === "number"
       ? receivedAtValue

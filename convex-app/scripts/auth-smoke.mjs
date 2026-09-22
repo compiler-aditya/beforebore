@@ -113,4 +113,16 @@ client.setAuth(signIn.tokens.accessToken);
 if ((await client.query(api.users.current, {})).username !== username) {
   throw new Error("Authenticated sign-in round trip failed.");
 }
+const expectedInboxSubject = process.env.AUTH_SMOKE_EXPECT_INBOX_SUBJECT;
+if (expectedInboxSubject) {
+  await new Promise((resolve) => setTimeout(resolve, 12_000));
+  const refreshedDashboard = await client.query(api.dashboard.get, { projectCode: "ALDER-5" });
+  const received = refreshedDashboard?.inboxMessages.some((message) =>
+    message.subject.includes(expectedInboxSubject),
+  );
+  if (!received) {
+    throw new Error("Expected AgentMail inbox message was not recorded before the verification window elapsed.");
+  }
+  console.log("AgentMail signed inbound delivery was recorded in the live inbox.");
+}
 console.log("Passkey registration, authorized queries, and repeat sign-in passed.");

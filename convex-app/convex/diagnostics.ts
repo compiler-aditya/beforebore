@@ -322,7 +322,7 @@ export const ensureAgentMailWebhook = internalAction({
       status: "created",
       webhookId: typeof payload.webhook_id === "string" ? payload.webhook_id : null,
       secret: typeof payload.secret === "string" ? payload.secret : null,
-      detail: `Webhook registered for ${targetUrl}, scoped to ${inboxId}.`,
+      detail: `Webhook registered for ${targetUrl}.`,
     };
   },
 });
