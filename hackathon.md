@@ -12,7 +12,7 @@
 - **Auth:** Convex Auth
 - **AI models:** gpt-4o-mini via `OPENAI_API_KEY`, otherwise gemini-2.5-flash via `GEMINI_API_KEY` (verified live on production)
 - **Started:** 2026-09-21T14:06:36Z
-- **Last updated:** 2026-09-22T11:59:31Z
+- **Last updated:** 2026-09-22T12:01:19Z
 
 ## Log
 
@@ -184,3 +184,11 @@ webhook secret for an existing endpoint, the local setup script checks whether
 the secret is already stored in the selected Convex deployment and exits
 successfully without printing the value. The idempotent production re-run
 passed (`convex-app/scripts/agentmail-webhook.sh`).
+
+### 2026-09-22 - c98a5de
+
+Removed inbox identifiers from the operator-only AgentMail health check. It now
+reports only the count of accessible inboxes and whether the configured inbox
+was found, while retaining the provider reachability check. Production verified
+Firecrawl scraping, the configured model response, and AgentMail authentication
+after the redaction (`convex-app/convex/diagnostics.ts`).
