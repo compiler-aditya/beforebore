@@ -132,7 +132,7 @@ produced it and each marked advisory. No gate was cleared.
 Production still holds a placeholder `GEMINI_API_KEY` and reports HTTP 400;
 only the dev deployment has a working key.
 
-### 2026-09-22 - PLACEHOLDER
+### 2026-09-22 - 2dd3941
 
 Production rejected its model key while dev worked. The connectivity check now
 describes a rejected key by length and leading characters only, never its
