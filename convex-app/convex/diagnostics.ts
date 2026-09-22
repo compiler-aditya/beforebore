@@ -2,7 +2,7 @@ import { v } from "convex/values";
 
 import { env, internalAction } from "./_generated/server";
 import { sendCoordinationEmail } from "./coordination";
-import { modelIdFor, selectModelProvider } from "./prescreen";
+import { computePrescreen, modelIdFor, selectModelProvider } from "./prescreen";
 
 // Operator-only connectivity check for the external providers this app calls.
 // It proves that a deployment's credentials actually reach Firecrawl, the
@@ -339,5 +339,35 @@ export const sendCoordinationProbe = internalAction({
       body: "Automated BeforeBore connectivity probe. No action is required and this message does not request or grant clearance to cut concrete.",
     });
     return result;
+  },
+});
+
+// Runs a real Firecrawl -> model pre-screen through the same function the
+// signed-in dashboard calls, so an operator can prove the whole chain before a
+// demo. It does not write an audit event, because no user requested it.
+export const prescreenProbe = internalAction({
+  args: { permitId: v.id("permits"), sourceUrl: v.string() },
+  returns: v.object({
+    status: v.string(),
+    provider: v.string(),
+    model: v.string(),
+    findingCount: v.number(),
+    findings: v.array(v.string()),
+  }),
+  handler: async (ctx, args) => {
+    const provider = selectModelProvider();
+    const result = await computePrescreen(ctx, {
+      permitId: args.permitId,
+      sourceUrl: args.sourceUrl,
+    });
+    return {
+      status: result.status,
+      provider: provider ?? "none",
+      model: provider === null ? "none" : modelIdFor(provider),
+      findingCount: result.findings.length,
+      findings: result.findings.map(
+        (finding) => `[${finding.provider}/${finding.severity}] ${finding.gateKey}: ${finding.summary}`,
+      ),
+    };
   },
 });

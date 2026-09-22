@@ -147,20 +147,28 @@ export function modelIdFor(provider: ModelProvider): string {
     : (env.GEMINI_MODEL ?? "gemini-2.5-flash");
 }
 
-function extractGeminiText(payload: unknown): string | null {
-  if (!isRecord(payload) || !Array.isArray(payload.candidates)) return null;
+function extractGeminiText(payload: unknown): {
+  text: string | null;
+  finishReason: string | null;
+} {
+  if (!isRecord(payload) || !Array.isArray(payload.candidates)) {
+    return { text: null, finishReason: null };
+  }
+  let finishReason: string | null = null;
   for (const candidate of payload.candidates) {
-    if (!isRecord(candidate) || !isRecord(candidate.content)) continue;
+    if (!isRecord(candidate)) continue;
+    finishReason = finishReason ?? textValue(candidate.finishReason);
+    if (!isRecord(candidate.content)) continue;
     const parts = Array.isArray(candidate.content.parts)
       ? candidate.content.parts
       : [];
     for (const part of parts) {
       if (!isRecord(part)) continue;
       const text = textValue(part.text);
-      if (text !== null) return text;
+      if (text !== null) return { text, finishReason };
     }
   }
-  return null;
+  return { text: null, finishReason };
 }
 
 type ModelOutcome =
@@ -256,6 +264,11 @@ async function requestFindings(
         contents: [{ role: "user", parts: [{ text: prompt }] }],
         generationConfig: {
           responseMimeType: "application/json",
+          // Gemini 2.5 spends maxOutputTokens on thinking before it emits any
+          // JSON. A long scraped document pushes a small budget past the limit
+          // and the candidate comes back empty, so cap the thinking and leave
+          // ample room for the answer itself.
+          thinkingConfig: { thinkingBudget: 512 },
           responseSchema: {
             type: "OBJECT",
             properties: {
@@ -277,7 +290,7 @@ async function requestFindings(
             },
             required: ["findings"],
           },
-          maxOutputTokens: 1_000,
+          maxOutputTokens: 4_096,
         },
       }),
     },
@@ -289,10 +302,17 @@ async function requestFindings(
       detail: `Gemini could not analyze the source (HTTP ${response.status}).`,
     };
   }
-  const text = extractGeminiText(await response.json());
-  return text === null
-    ? { ok: false, detail: "Gemini returned no structured output." }
-    : { ok: true, text };
+  const { text, finishReason } = extractGeminiText(await response.json());
+  if (text === null) {
+    return {
+      ok: false,
+      detail:
+        finishReason === "MAX_TOKENS"
+          ? "Gemini hit its output limit before returning findings."
+          : `Gemini returned no structured output${finishReason ? ` (${finishReason})` : ""}.`,
+    };
+  }
+  return { ok: true, text };
 }
 
 function validateSourceUrl(sourceUrl: string): string | null {
@@ -472,7 +492,7 @@ type PrescreenResult = {
   findings: Finding[];
 };
 
-async function computePrescreen(
+export async function computePrescreen(
   ctx: GenericActionCtx<DataModel>,
   args: { permitId: Id<"permits">; sourceUrl: string },
 ): Promise<PrescreenResult> {

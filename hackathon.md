@@ -10,9 +10,9 @@
 - **Components:** @convex-dev/auth, @convex-dev/static-hosting
 - **Convex features:** schema, indexes, queries, mutations, actions, HTTP actions, realtime queries
 - **Auth:** Convex Auth
-- **AI models:** gpt-4o-mini via `OPENAI_API_KEY`, otherwise gemini-2.5-flash via `GEMINI_API_KEY`; neither key is set yet
+- **AI models:** gpt-4o-mini via `OPENAI_API_KEY`, otherwise gemini-2.5-flash via `GEMINI_API_KEY` (verified live on dev)
 - **Started:** 2026-09-21T14:06:36Z
-- **Last updated:** 2026-09-22T07:10:00Z
+- **Last updated:** 2026-09-22T07:40:00Z
 
 ## Log
 
@@ -111,3 +111,23 @@ The connectivity check now reports one `model` provider rather than assuming
 OpenAI, and says plainly when neither key is set. Verified on the dev
 deployment: Firecrawl and AgentMail pass; the model check correctly reports
 that no model key is configured.
+
+### 2026-09-22 - PLACEHOLDER
+
+The Gemini pre-screen returned no findings against a real document while
+succeeding on a short test prompt. Gemini 2.5 spends `maxOutputTokens` on
+thinking tokens before emitting any JSON, so an 18,000-character scraped
+document exhausted the 1,000-token budget and the candidate came back empty
+with `finishReason: MAX_TOKENS`. Capped thinking at 512 tokens, raised the
+output budget to 4,096, and made the empty-candidate path report the finish
+reason instead of the generic "not valid structured evidence"
+(`convex/prescreen.ts`).
+
+Added `diagnostics:prescreenProbe`, which runs the real Firecrawl-to-model
+function the dashboard calls, so the whole chain can be proven without signing
+in. Verified on the dev deployment: a live URL produced seven structured
+findings across six valid gate keys, each attributed to the model that
+produced it and each marked advisory. No gate was cleared.
+
+Production still holds a placeholder `GEMINI_API_KEY` and reports HTTP 400;
+only the dev deployment has a working key.
