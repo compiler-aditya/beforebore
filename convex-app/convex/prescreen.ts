@@ -15,6 +15,7 @@ const severityValidator = v.union(
 
 const providerValidator = v.union(
   v.literal("openai"),
+  v.literal("gemini"),
   v.literal("firecrawl"),
   v.literal("demo"),
 );
@@ -57,7 +58,7 @@ type Finding = {
   severity: "info" | "warning" | "blocked";
   summary: string;
   sourceUrl: string;
-  provider: "openai" | "firecrawl" | "demo";
+  provider: ModelProvider | "firecrawl" | "demo";
   humanReviewRequired: boolean;
 };
 
@@ -115,6 +116,185 @@ async function fetchWithTimeout(
   }
 }
 
+export type ModelProvider = "openai" | "gemini";
+
+const SYSTEM_PROMPT =
+  "You are a construction coordination assistant. You identify evidence gaps for human review; you do not approve drilling.";
+
+const GATE_KEYS = [
+  "current-drawing",
+  "gpr-scan",
+  "structural-approval",
+  "mep-clearance",
+  "exclusion-zone",
+  "firestop-system",
+];
+
+/**
+ * Picks the structured-output model provider from whatever this deployment has
+ * configured. OpenAI wins when both keys are present, so adding an OpenAI key
+ * is enough to switch back without a code change.
+ */
+export function selectModelProvider(): ModelProvider | null {
+  if (env.OPENAI_API_KEY) return "openai";
+  if (env.GEMINI_API_KEY) return "gemini";
+  return null;
+}
+
+export function modelIdFor(provider: ModelProvider): string {
+  return provider === "openai"
+    ? "gpt-4o-mini"
+    : (env.GEMINI_MODEL ?? "gemini-2.5-flash");
+}
+
+function extractGeminiText(payload: unknown): string | null {
+  if (!isRecord(payload) || !Array.isArray(payload.candidates)) return null;
+  for (const candidate of payload.candidates) {
+    if (!isRecord(candidate) || !isRecord(candidate.content)) continue;
+    const parts = Array.isArray(candidate.content.parts)
+      ? candidate.content.parts
+      : [];
+    for (const part of parts) {
+      if (!isRecord(part)) continue;
+      const text = textValue(part.text);
+      if (text !== null) return text;
+    }
+  }
+  return null;
+}
+
+type ModelOutcome =
+  | { ok: true; text: string }
+  | { ok: false; detail: string };
+
+/**
+ * Asks the configured model for findings in one fixed JSON shape. Both
+ * providers are pinned to structured output, so `parseModelFindings` receives
+ * the same contract whichever one answered.
+ */
+async function requestFindings(
+  provider: ModelProvider,
+  prompt: string,
+): Promise<ModelOutcome> {
+  const model = modelIdFor(provider);
+
+  if (provider === "openai") {
+    const response = await fetchWithTimeout(
+      "https://api.openai.com/v1/responses",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${env.OPENAI_API_KEY ?? ""}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model,
+          input: [
+            { role: "system", content: SYSTEM_PROMPT },
+            { role: "user", content: prompt },
+          ],
+          text: {
+            format: {
+              type: "json_schema",
+              name: "beforebore_prescreen",
+              strict: true,
+              schema: {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  findings: {
+                    type: "array",
+                    maxItems: 8,
+                    items: {
+                      type: "object",
+                      additionalProperties: false,
+                      properties: {
+                        gateKey: { type: "string", enum: GATE_KEYS },
+                        severity: {
+                          type: "string",
+                          enum: ["info", "warning", "blocked"],
+                        },
+                        summary: { type: "string" },
+                      },
+                      required: ["gateKey", "severity", "summary"],
+                    },
+                  },
+                },
+                required: ["findings"],
+              },
+            },
+          },
+          max_output_tokens: 1_000,
+        }),
+      },
+      10_000,
+    );
+    if (!response.ok) {
+      return {
+        ok: false,
+        detail: `OpenAI could not analyze the source (HTTP ${response.status}).`,
+      };
+    }
+    const text = extractOutputText(await response.json());
+    return text === null
+      ? { ok: false, detail: "OpenAI returned no structured output." }
+      : { ok: true, text };
+  }
+
+  // Gemini authenticates with a header key and uses its own OpenAPI-subset
+  // schema dialect, but the requested JSON shape matches the OpenAI branch.
+  const response = await fetchWithTimeout(
+    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+    {
+      method: "POST",
+      headers: {
+        "x-goog-api-key": env.GEMINI_API_KEY ?? "",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: "OBJECT",
+            properties: {
+              findings: {
+                type: "ARRAY",
+                items: {
+                  type: "OBJECT",
+                  properties: {
+                    gateKey: { type: "STRING", enum: GATE_KEYS },
+                    severity: {
+                      type: "STRING",
+                      enum: ["info", "warning", "blocked"],
+                    },
+                    summary: { type: "STRING" },
+                  },
+                  required: ["gateKey", "severity", "summary"],
+                },
+              },
+            },
+            required: ["findings"],
+          },
+          maxOutputTokens: 1_000,
+        },
+      }),
+    },
+    15_000,
+  );
+  if (!response.ok) {
+    return {
+      ok: false,
+      detail: `Gemini could not analyze the source (HTTP ${response.status}).`,
+    };
+  }
+  const text = extractGeminiText(await response.json());
+  return text === null
+    ? { ok: false, detail: "Gemini returned no structured output." }
+    : { ok: true, text };
+}
+
 function validateSourceUrl(sourceUrl: string): string | null {
   if (sourceUrl.length > 2_000) return null;
   try {
@@ -158,6 +338,7 @@ function extractOutputText(payload: unknown): string | null {
 function parseModelFindings(
   payload: unknown,
   sourceUrl: string,
+  provider: ModelProvider,
 ): Finding[] | null {
   let parsed: unknown = payload;
   if (typeof payload === "string") {
@@ -187,7 +368,7 @@ function parseModelFindings(
       severity,
       summary: boundedText(summary, 480),
       sourceUrl,
-      provider: "openai",
+      provider,
       humanReviewRequired: true,
     });
   }
@@ -318,8 +499,8 @@ async function computePrescreen(
     }
 
     const firecrawlKey = env.FIRECRAWL_API_KEY;
-    const openAiKey = env.OPENAI_API_KEY;
-    if (!firecrawlKey || !openAiKey) {
+    const modelProvider = selectModelProvider();
+    if (!firecrawlKey || modelProvider === null) {
       return { status: "not_configured" as const, findings: demoFindings(sourceUrl) };
     }
 
@@ -371,74 +552,14 @@ async function computePrescreen(
         "Source document:\n" + scrapedText.slice(0, 18_000),
       ].join("\n\n");
 
-      const openAiResponse = await fetchWithTimeout(
-        "https://api.openai.com/v1/responses",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${openAiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: "gpt-4o-mini",
-            input: [
-              {
-                role: "system",
-                content:
-                  "You are a construction coordination assistant. You identify evidence gaps for human review; you do not approve drilling.",
-              },
-              { role: "user", content: prompt },
-            ],
-            text: {
-              format: {
-                type: "json_schema",
-                name: "beforebore_prescreen",
-                strict: true,
-                schema: {
-                  type: "object",
-                  additionalProperties: false,
-                  properties: {
-                    findings: {
-                      type: "array",
-                      maxItems: 8,
-                      items: {
-                        type: "object",
-                        additionalProperties: false,
-                        properties: {
-                          gateKey: { type: "string" },
-                          severity: {
-                            type: "string",
-                            enum: ["info", "warning", "blocked"],
-                          },
-                          summary: { type: "string" },
-                        },
-                        required: ["gateKey", "severity", "summary"],
-                      },
-                    },
-                  },
-                  required: ["findings"],
-                },
-              },
-            },
-            max_output_tokens: 1_000,
-          }),
-        },
-        10_000,
-      );
-      if (!openAiResponse.ok) {
+      const outcome = await requestFindings(modelProvider, prompt);
+      if (!outcome.ok) {
         return {
           status: "failed" as const,
-          findings: failedFindings(
-            sourceUrl,
-            `OpenAI could not analyze the source (HTTP ${openAiResponse.status}).`,
-          ),
+          findings: failedFindings(sourceUrl, outcome.detail),
         };
       }
-      const openAiPayload: unknown = await openAiResponse.json();
-      const outputText = extractOutputText(openAiPayload);
-      const findings = outputText
-        ? parseModelFindings(outputText, sourceUrl)
-        : null;
+      const findings = parseModelFindings(outcome.text, sourceUrl, modelProvider);
       if (findings === null) {
         return {
           status: "failed" as const,
@@ -455,7 +576,7 @@ async function computePrescreen(
           {
             gateKey: "current-drawing",
             severity: "info" as const,
-            summary: "Source document fetched by Firecrawl; findings remain advisory.",
+            summary: `Source document fetched by Firecrawl; analyzed by ${modelIdFor(modelProvider)}. Findings remain advisory.`,
             sourceUrl,
             provider: "firecrawl" as const,
             humanReviewRequired: true,

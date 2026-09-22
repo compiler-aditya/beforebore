@@ -36,6 +36,8 @@ type Env = {
   readonly AUTH_JWKS: string;
   readonly AUTH_PRIVATE_KEY: string;
   readonly FIRECRAWL_API_KEY: string | undefined;
+  readonly GEMINI_API_KEY: string | undefined;
+  readonly GEMINI_MODEL: string | undefined;
   readonly OPENAI_API_KEY: string | undefined;
   readonly SITE_URL: string;
 };

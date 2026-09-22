@@ -2,10 +2,12 @@ import { v } from "convex/values";
 
 import { env, internalAction } from "./_generated/server";
 import { sendCoordinationEmail } from "./coordination";
+import { modelIdFor, selectModelProvider } from "./prescreen";
 
-// Operator-only connectivity check for the three sponsor providers. It proves
-// that a deployment's credentials actually reach Firecrawl, OpenAI, and
-// AgentMail before a demo, and it never returns a secret value.
+// Operator-only connectivity check for the external providers this app calls.
+// It proves that a deployment's credentials actually reach Firecrawl, the
+// configured model provider, and AgentMail before a demo, and it never returns
+// a secret value.
 
 const checkValidator = v.object({
   checkedAt: v.string(),
@@ -116,49 +118,54 @@ async function checkFirecrawl(): Promise<ProviderCheck> {
   }
 }
 
-async function checkOpenAi(): Promise<ProviderCheck> {
-  const apiKey = env.OPENAI_API_KEY;
-  if (!apiKey) {
+async function checkModelProvider(): Promise<ProviderCheck> {
+  const provider = selectModelProvider();
+  if (provider === null) {
     return {
-      provider: "openai",
+      provider: "model",
       configured: false,
       ok: false,
-      detail: "OPENAI_API_KEY is not set on this deployment.",
+      detail: "Neither OPENAI_API_KEY nor GEMINI_API_KEY is set on this deployment.",
     };
   }
-  const model = "gpt-4o-mini";
+  const model = modelIdFor(provider);
+  const isOpenAi = provider === "openai";
+  const url = isOpenAi
+    ? "https://api.openai.com/v1/responses"
+    : `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+  const headers: Record<string, string> = isOpenAi
+    ? {
+        Authorization: `Bearer ${env.OPENAI_API_KEY ?? ""}`,
+        "Content-Type": "application/json",
+      }
+    : {
+        "x-goog-api-key": env.GEMINI_API_KEY ?? "",
+        "Content-Type": "application/json",
+      };
+  const body = isOpenAi
+    ? { model, input: "Reply with the single word: ready", max_output_tokens: 16 }
+    : {
+        contents: [{ role: "user", parts: [{ text: "Reply with the single word: ready" }] }],
+        generationConfig: { maxOutputTokens: 16 },
+      };
+
   try {
     const response = await fetchWithTimeout(
-      "https://api.openai.com/v1/responses",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model,
-          input: "Reply with the single word: ready",
-          max_output_tokens: 16,
-        }),
-      },
+      url,
+      { method: "POST", headers, body: JSON.stringify(body) },
       20_000,
     );
-    if (!response.ok) return await describeFailure("openai", response);
-    const payload: unknown = await response.json();
-    const outputText =
-      isRecord(payload) && typeof payload.output_text === "string"
-        ? payload.output_text
-        : "";
+    if (!response.ok) return await describeFailure(provider, response);
+    await response.json();
     return {
-      provider: "openai",
+      provider,
       configured: true,
       ok: true,
-      detail: `Model ${model} responded${outputText ? `: "${bounded(outputText, 60)}"` : "."}`,
+      detail: `Model ${model} responded.`,
     };
   } catch (error) {
     return {
-      provider: "openai",
+      provider,
       configured: true,
       ok: false,
       detail: bounded(error instanceof Error ? error.message : "Unknown error", 200),
@@ -213,7 +220,7 @@ export const sponsorCheck = internalAction({
   handler: async () => {
     const providers = await Promise.all([
       checkFirecrawl(),
-      checkOpenAi(),
+      checkModelProvider(),
       checkAgentMail(),
     ]);
     return { checkedAt: new Date().toISOString(), providers };

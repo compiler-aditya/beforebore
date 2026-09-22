@@ -10,9 +10,9 @@
 - **Components:** @convex-dev/auth, @convex-dev/static-hosting
 - **Convex features:** schema, indexes, queries, mutations, actions, HTTP actions, realtime queries
 - **Auth:** Convex Auth
-- **AI models:** gpt-4o-mini (OpenAI pre-screen action; awaiting an OPENAI_API_KEY on the deployment)
+- **AI models:** gpt-4o-mini via `OPENAI_API_KEY`, otherwise gemini-2.5-flash via `GEMINI_API_KEY`; neither key is set yet
 - **Started:** 2026-09-21T14:06:36Z
-- **Last updated:** 2026-09-22T07:35:00Z
+- **Last updated:** 2026-09-22T07:10:00Z
 
 ## Log
 
@@ -95,3 +95,19 @@ readout with readable labels (`components/BeforeBoreDashboard.tsx`).
 
 Verified on the dev deployment: both new event types insert and read back with
 the expected actor, type, and summary. Type-check and lint are clean.
+
+### 2026-09-22 - ce2601d
+
+Made the pre-screen model provider swappable. `selectModelProvider` prefers
+OpenAI when `OPENAI_API_KEY` is present and falls back to Gemini when only
+`GEMINI_API_KEY` is set, so an OpenAI key can be added later without a code
+change. Both branches are pinned to structured output against the same JSON
+contract — OpenAI through `json_schema`, Gemini through `responseSchema` — so
+the parser and the gate-key enum are shared rather than duplicated per
+provider. Findings record which model produced them
+(`convex/prescreen.ts`, `convex/convex.config.ts`, `convex/diagnostics.ts`).
+
+The connectivity check now reports one `model` provider rather than assuming
+OpenAI, and says plainly when neither key is set. Verified on the dev
+deployment: Firecrawl and AgentMail pass; the model check correctly reports
+that no model key is configured.

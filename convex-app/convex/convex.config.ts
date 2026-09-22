@@ -13,6 +13,8 @@ const app = defineApp({
     AUTH_JWKS: v.string(),
     SITE_URL: v.string(),
     OPENAI_API_KEY: v.optional(v.string()),
+    GEMINI_API_KEY: v.optional(v.string()),
+    GEMINI_MODEL: v.optional(v.string()),
     FIRECRAWL_API_KEY: v.optional(v.string()),
     AGENTMAIL_API_KEY: v.optional(v.string()),
     AGENTMAIL_INBOX_ID: v.optional(v.string()),
