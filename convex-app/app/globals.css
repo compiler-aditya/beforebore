@@ -72,3 +72,75 @@
     background-size: 32px 32px, 32px 32px, 8px 8px, 8px 8px;
   }
 }
+
+/* BeforeBore deliberately uses a dense, drawing-room palette rather than the
+   generic shadcn surface tokens. These scoped overrides preserve that visual
+   hierarchy while giving the public demo a genuinely legible light mode. */
+@layer utilities {
+  .bb-theme-scope {
+    transition: background-color 160ms ease, color 160ms ease;
+  }
+
+  html.light .bb-theme-scope {
+    color: #18181b;
+  }
+
+  html.light .bb-theme-scope [class*="bg-[#0c0e12"],
+  html.light .bb-theme-scope [class*="bg-[#111318"],
+  html.light .bb-theme-scope [class*="bg-[#12151a"] {
+    background-color: #f8fafc !important;
+  }
+
+  html.light .bb-theme-scope [class*="bg-[#13161b"],
+  html.light .bb-theme-scope [class*="bg-[#15181d"] {
+    background-color: #ffffff !important;
+  }
+
+  html.light .bb-theme-scope [class*="bg-[#171a20"],
+  html.light .bb-theme-scope [class*="bg-zinc-950"],
+  html.light .bb-theme-scope [class*="bg-zinc-900"],
+  html.light .bb-theme-scope [class*="bg-zinc-800"] {
+    background-color: #f1f5f9 !important;
+  }
+
+  html.light .bb-theme-scope [class*="border-zinc-"],
+  html.light .bb-theme-scope [class*="divide-zinc-"] {
+    border-color: #d4d4d8 !important;
+  }
+
+  html.light .bb-theme-scope .text-white,
+  html.light .bb-theme-scope .text-zinc-100,
+  html.light .bb-theme-scope .text-zinc-200 {
+    color: #18181b !important;
+  }
+
+  html.light .bb-theme-scope .text-zinc-300,
+  html.light .bb-theme-scope .text-zinc-400 {
+    color: #3f3f46 !important;
+  }
+
+  html.light .bb-theme-scope .text-zinc-500 {
+    color: #52525b !important;
+  }
+
+  html.light .bb-theme-scope .text-zinc-600 {
+    color: #71717a !important;
+  }
+
+  html.light .bb-theme-scope [class*="hover:bg-zinc-"]:hover {
+    background-color: #e4e4e7 !important;
+  }
+
+  html.light .bb-theme-scope .blueprint-grid {
+    background-image:
+      linear-gradient(rgba(71, 85, 105, 0.2) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(71, 85, 105, 0.2) 1px, transparent 1px),
+      linear-gradient(rgba(71, 85, 105, 0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(71, 85, 105, 0.06) 1px, transparent 1px);
+  }
+
+  html.light .bb-theme-scope [class*="shadow-black"],
+  html.light .bb-theme-scope [class*="shadow-zinc-950"] {
+    --tw-shadow-color: rgb(24 24 27 / 0.12);
+  }
+}

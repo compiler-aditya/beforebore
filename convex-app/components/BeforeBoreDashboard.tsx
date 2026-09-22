@@ -31,6 +31,7 @@ import {
 
 import { api } from "@/convex/_generated/api";
 import { PasskeySignIn } from "@/components/PasskeySignIn";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import type { Id } from "@/convex/_generated/dataModel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -536,7 +537,7 @@ function BeforeBoreDashboardContent({ liveEnabled, previewMode = false, onExitPr
   ];
 
   return (
-      <div className="min-h-screen bg-[#0c0e12] text-zinc-100">
+      <div className="bb-theme-scope min-h-screen bg-[#0c0e12] text-zinc-100">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-zinc-700/80 bg-[#111318] lg:flex">
         <div className="flex h-[76px] items-center gap-3 border-b border-zinc-700/80 px-5">
           <div className="grid h-10 w-10 place-items-center rounded-lg bg-amber-400 text-zinc-950 shadow-[0_0_30px_rgba(251,191,36,0.12)]">
@@ -608,6 +609,7 @@ function BeforeBoreDashboardContent({ liveEnabled, previewMode = false, onExitPr
           <div className="flex items-center gap-2 sm:gap-3">
             {liveEnabled && <span className="hidden text-xs text-zinc-400 md:inline">{currentUser?.username}</span>}
             {previewMode ? <Button type="button" variant="ghost" onClick={onExitPreview} className="text-xs text-zinc-300 hover:bg-zinc-800 hover:text-white">Sign in</Button> : <Button type="button" variant="ghost" onClick={() => void signOut()} className="text-xs text-zinc-300 hover:bg-zinc-800 hover:text-white">Sign out</Button>}
+            <ThemeToggle />
             {searchOpen && <Input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} aria-label="Search permits" placeholder="Permit, location, or trade" className="hidden h-9 w-52 border-zinc-700 bg-zinc-900 text-xs text-white sm:block" />}
             <button type="button" onClick={() => { setSearchOpen((open) => !open); setSearchTerm(""); }} className="hidden h-9 items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-900 px-3 text-xs text-zinc-400 hover:border-zinc-600 hover:text-white sm:flex"><Search className="h-3.5 w-3.5" /> {searchOpen ? "Close search" : "Search permits"}</button>
             {liveEnabled && <Button onClick={() => setShowNewPermit(true)} className="h-10 bg-amber-400 px-4 font-bold text-zinc-950 hover:bg-amber-300"><Plus /> <span className="hidden sm:inline">New permit</span></Button>}
@@ -816,7 +818,7 @@ function GuestAccess() {
 export function BeforeBoreDashboard() {
   return (
     <>
-      <AuthLoading><div className="flex min-h-screen items-center justify-center bg-[#0c0e12] text-sm text-zinc-400"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Restoring session…</div></AuthLoading>
+      <AuthLoading><div className="bb-theme-scope flex min-h-screen items-center justify-center bg-[#0c0e12] text-sm text-zinc-400"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Restoring session…</div></AuthLoading>
       <Unauthenticated><GuestAccess /></Unauthenticated>
       <Authenticated>
         <DashboardErrorBoundary>

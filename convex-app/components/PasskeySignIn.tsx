@@ -8,6 +8,7 @@ import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export function PasskeySignIn({ onExploreDemo }: { onExploreDemo?: () => void }) {
   const [username, setUsername] = useState("");
@@ -37,11 +38,14 @@ export function PasskeySignIn({ onExploreDemo }: { onExploreDemo?: () => void })
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#0c0e12] px-4 py-10 text-white">
+    <main className="bb-theme-scope flex min-h-screen items-center justify-center bg-[#0c0e12] px-4 py-10 text-white">
       <div className="w-full max-w-md rounded-2xl border border-zinc-700 bg-[#15181d] p-7 shadow-2xl sm:p-9">
-        <div className="mb-8 flex items-center gap-3">
-          <span className="grid h-11 w-11 place-items-center rounded-xl bg-amber-400 text-zinc-950"><Drill className="h-6 w-6" /></span>
-          <div><p className="text-lg font-bold">BeforeBore</p><p className="text-xs text-zinc-500">Construction evidence control room</p></div>
+        <div className="mb-8 flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <span className="grid h-11 w-11 place-items-center rounded-xl bg-amber-400 text-zinc-950"><Drill className="h-6 w-6" /></span>
+            <div><p className="text-lg font-bold">BeforeBore</p><p className="text-xs text-zinc-500">Construction evidence control room</p></div>
+          </div>
+          <ThemeToggle />
         </div>
         <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-xl border border-amber-400/25 bg-amber-400/10 text-amber-300"><Fingerprint /></div>
         <h1 className="text-2xl font-semibold tracking-tight">Sign in with a passkey</h1>
