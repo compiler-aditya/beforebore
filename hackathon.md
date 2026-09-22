@@ -12,7 +12,7 @@
 - **Auth:** Convex Auth
 - **AI models:** gpt-4o-mini via `OPENAI_API_KEY`, otherwise gemini-2.5-flash via `GEMINI_API_KEY` (verified live on production)
 - **Started:** 2026-09-21T14:06:36Z
-- **Last updated:** 2026-09-22T07:45:00Z
+- **Last updated:** 2026-09-22T07:55:00Z
 
 ## Log
 
@@ -146,3 +146,20 @@ advisory. No gate was cleared. Firecrawl, the model pre-screen, and AgentMail
 outbound now all pass against production.
 
 Inbound AgentMail replies remain the one unproven leg.
+
+### 2026-09-22 - PLACEHOLDER
+
+Published the current frontend to the production `convex.site` host, then hit
+a CDN failure worth recording. Convex static hosting caches a miss with
+`max-age=14400`, so chunk URLs that were requested *before* their upload kept
+returning 404 at that edge for four hours after the files existed. Three of
+them were load-bearing and the published app hung at "Restoring session…"
+while every file was present and fetchable with a cache-busting query.
+
+Fixed by setting Next's `deploymentId`, which stamps a per-deploy id onto every
+asset URL. Each publish therefore uses a fresh cache key and a poisoned miss
+can no longer outlive a deploy (`convex-app/next.config.ts`).
+
+Verified on production: the page loads with every asset returning 200, and the
+served dashboard bundle contains the current status-message and pre-screen
+labels.
