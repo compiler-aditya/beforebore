@@ -1,0 +1,54 @@
+# Hackathon log
+
+- **Project:** BeforeBore
+- **Event:** Convex All Gas Hackathon
+- **What it does:** Demonstrates evidence-gated coordination for concrete drilling and cutting requests without granting permission to perform site work.
+- **Live app:** https://tacit-anaconda-976.convex.site
+- **Repo:** https://github.com/compiler-aditya/beforebore
+- **Frontend:** Convex static hosting
+- **Convex deployment:** https://tacit-anaconda-976.convex.cloud
+- **Components:** @convex-dev/auth, @convex-dev/static-hosting
+- **Convex features:** schema, indexes, queries, mutations, actions, HTTP actions, realtime queries
+- **Auth:** Convex Auth
+- **AI models:** gpt-4o-mini (optional OpenAI pre-screen action; live call not yet verified)
+- **Started:** 2026-09-21T14:06:36Z
+- **Last updated:** 2026-09-22T05:19:35Z
+
+## Log
+
+### 2026-09-21 - 4e9dba9
+Built the synthetic control room and live Convex data model: indexed projects,
+permits, six evidence gates, inbox replies, and audit events. Added passkey
+sign-in with Convex Auth, authenticated queries and mutations, idempotent permit
+creation, demo seeding, and simulation restricted to seeded requests. The UI
+shows the queue, map, gate details, and audit trail. Dev tests covered passkey
+registration, repeat sign-in, authorized reads, and rejection of a simulated
+transition on a newly created permit (`convex-app/convex/schema.ts`,
+`convex-app/convex/auth.ts`, `convex-app/convex/permits.ts`,
+`convex-app/components/BeforeBoreDashboard.tsx`).
+
+Wired optional Firecrawl source extraction, OpenAI structured advisory findings,
+and AgentMail coordination requests plus a protected reply endpoint. Missing
+credentials return an explicit not-configured result, and no AI result clears
+a gate. Live sponsor-account round trips have not been verified
+(`convex-app/convex/prescreen.ts`, `convex-app/convex/coordination.ts`,
+`convex-app/convex/http.ts`).
+
+### 2026-09-22 - 57972a2
+Added Convex static hosting and deployment-specific passkey origin configuration,
+then published the guest-accessible sample at the live app URL. The production
+backend and site were deployed; the public page, static assets, auth JWKS,
+passkey registration, authorized project query, and repeat sign-in passed
+verification. Seeded four synthetic permits in production. The guest sample is
+read-only; live actions require sign-in (`convex-app/convex/convex.config.ts`,
+`convex-app/convex/http.ts`, `convex-app/convex/auth.ts`,
+`convex-app/components/PasskeySignIn.tsx`,
+`convex-app/scripts/auth-smoke.mjs`).
+
+### 2026-09-22 - 852c1f1
+Updated Firecrawl extraction to its documented v2 scrape endpoint and replaced
+the AgentMail receiver's plain-header check with Svix signature verification.
+A synthetic signed webhook without a permit number returned the expected ignored
+result, while a tampered signature returned unauthorized. No live provider
+round trip is claimed (`convex-app/convex/prescreen.ts`,
+`convex-app/convex/http.ts`).

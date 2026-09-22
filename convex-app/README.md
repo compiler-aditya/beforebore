@@ -1,32 +1,51 @@
 # BeforeBore
 
-A synthetic construction-penetration coordination demo built with Next.js and Convex. Evidence gates, an audit trail, optional AI pre-screening, and a coordination inbox illustrate a workflow; they do **not** grant permission to cut or drill concrete.
+[Live demo](https://tacit-anaconda-976.convex.site) · [Hackathon build log](../hackathon.md)
 
-## Local development
+BeforeBore is a synthetic construction-penetration coordination workspace. It makes the evidence missing from a proposed concrete cut visible before anyone treats a permit as ready. A queue, floor-map overlay, six evidence gates, coordination inbox, and audit trail show how a team could follow a request from draft through review. The app **does not authorize drilling or cutting**; its green states and gate transitions are demonstrative only.
 
-The frontend is currently configured for `http://localhost:62731/`. Start the existing Convex dev deployment and app:
+## Try the demo
+
+1. Open the live app and choose **Explore the read-only sample**. No account is needed to inspect four example permits, their gate states, map locations, and sample inbox replies.
+2. Select blocked permit **BB-2049** to see the two outstanding gates. Use search and the map pins to navigate the queue.
+3. To exercise the live Convex workflow, sign in with a passkey on a browser/device that supports WebAuthn. The production workspace contains synthetic seeded data. You can create a request and inspect its live audit events. Only the seeded examples allow simulated gate transitions; a newly created permit cannot self-approve.
+
+The shared `ALDER-5` workspace is visible to every registered demo user. Do not upload real drawings, private project information, or actual site instructions. There is no project membership or qualified-reviewer verification yet.
+
+## Architecture
+
+- **Convex:** Indexed projects, permits, evidence gates, inbox messages, and audit events; reactive queries, mutations, actions, and an HTTP webhook endpoint. The frontend is published through the Convex static-hosting component.
+- **Authentication:** Convex Auth v2 alpha with username + passkey. The relying-party ID and origin are derived from the deployment's `SITE_URL`; dev and production have separate credentials.
+- **Optional sponsor workflows:** Firecrawl extracts text from a supplied source URL; OpenAI `gpt-4o-mini` returns structured advisory findings; AgentMail can send a coordination request and route a protected webhook reply into the inbox. These paths return explicit `not_configured` states without credentials and **have not been end-to-end verified with live sponsor accounts**. AI findings never clear evidence gates.
+
+## Run locally
 
 ```sh
+cd convex-app
+pnpm install
 npx convex dev
 npm run dev -- -p 62731
 ```
 
-The `.env.local` file needs `NEXT_PUBLIC_CONVEX_URL` and `CONVEX_DEPLOYMENT` from your Convex development setup. The Convex deployment needs `AUTH_PRIVATE_KEY` (base64-encoded PKCS8 PEM) and `AUTH_JWKS` (matching RS256 public JWKS); never commit either. The `convex/auth.config.ts` issuer is the deployment's `CONVEX_SITE_URL`. The optional `SITE_URL` variable is set to `http://localhost:62731` for this development deployment.
+Configure `.env.local` with `CONVEX_DEPLOYMENT` and `NEXT_PUBLIC_CONVEX_URL` for your development deployment. Set `SITE_URL=http://localhost:62731`, `AUTH_PRIVATE_KEY`, and matching `AUTH_JWKS` in that Convex deployment. Never commit signing keys or API keys. A passkey registered for localhost will not work on the hosted domain.
 
-Open the page in a browser with WebAuthn/passkey support, such as Chrome or Safari. Enter a new username to register a device passkey, or an existing username to sign in. The Codex in-app browser used for development does not currently expose WebAuthn; use a compatible browser for a personal-device sign-in.
+Optional Convex deployment environment variables: `FIRECRAWL_API_KEY`, `OPENAI_API_KEY`, `AGENTMAIL_API_KEY`, `AGENTMAIL_INBOX_ID`, and `AGENTMAIL_WEBHOOK_SECRET`. The webhook route is `/agentmail/webhook`. Configure an AgentMail `message.received` webhook for that URL, and store its `whsec_` Svix signing secret as `AGENTMAIL_WEBHOOK_SECRET`. Signature handling passed a synthetic signed/invalid request test; an actual AgentMail delivery is still unverified. The Firecrawl action uses the current v2 scrape endpoint.
 
-The passkey relying-party ID and exact origin are configured in `convex/auth.ts`. Before hosting on another domain or port, update both to match the HTTPS production origin, configure that deployment's auth signing keys, and push Convex functions there. Passkeys registered for `localhost` will not work on another domain. This uses the pinned `@convex-dev/auth` v2 alpha API; review its stability before production use.
-
-## Access model
-
-Every public project query and mutation requires a signed-in Convex user. Permit creation derives the requester name from that account. The current `ALDER-5` workspace is a **shared synthetic demo** visible to any account that signs up; there is no invitation flow, project membership, role verification, or real reviewer approval yet. Do not place actual site drawings or confidential project data in it.
-
-## Checks
+## Verify and deploy
 
 ```sh
-npm run build
 npm run lint
+npm run build
 node --env-file=.env.local scripts/auth-smoke.mjs
 ```
 
-The smoke test is restricted to this project's development deployment. It creates a synthetic account with an in-memory software authenticator, checks authorized reads, and performs a second cryptographically verified sign-in. It does not test an OS passkey prompt. Anonymous access can be checked with `npx convex run dashboard:get '{"projectCode":"ALDER-5"}'`, which should return `UNAUTHENTICATED`.
+The smoke script is restricted to the two known BeforeBore deployments and creates one synthetic test account with a software WebAuthn authenticator. It checks registration, authenticated reads, and repeat sign-in; it does not exercise an OS passkey prompt. To seed an empty known deployment during the smoke test, set `AUTH_SMOKE_SEED=1`. Anonymous Convex project queries reject with `UNAUTHENTICATED`.
+
+For this project's production deployment, set `SITE_URL` to the hosted `https://*.convex.site` origin, configure separate production signing keys, then publish:
+
+```sh
+npx convex deploy --yes
+npx @convex-dev/static-hosting upload --build --prod --dist out
+```
+
+`--build` supplies the production Convex URL to the Next.js static export. Production passkey registration, authenticated queries, repeat sign-in, the hosted page, assets, and the auth JWKS endpoint were verified on September 22, 2026. Live sponsor calls remain pending credentials.
