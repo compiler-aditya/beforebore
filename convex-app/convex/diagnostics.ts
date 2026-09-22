@@ -155,7 +155,16 @@ async function checkModelProvider(): Promise<ProviderCheck> {
       { method: "POST", headers, body: JSON.stringify(body) },
       20_000,
     );
-    if (!response.ok) return await describeFailure(provider, response);
+    if (!response.ok) {
+      // A rejected key is usually a paste mistake, so describe its shape --
+      // length and leading characters only, never the value.
+      const raw = (isOpenAi ? env.OPENAI_API_KEY : env.GEMINI_API_KEY) ?? "";
+      const failure = await describeFailure(provider, response);
+      return {
+        ...failure,
+        detail: `${failure.detail} [key length ${raw.length}, starts "${raw.slice(0, 4)}"]`,
+      };
+    }
     await response.json();
     return {
       provider,

@@ -10,9 +10,9 @@
 - **Components:** @convex-dev/auth, @convex-dev/static-hosting
 - **Convex features:** schema, indexes, queries, mutations, actions, HTTP actions, realtime queries
 - **Auth:** Convex Auth
-- **AI models:** gpt-4o-mini via `OPENAI_API_KEY`, otherwise gemini-2.5-flash via `GEMINI_API_KEY` (verified live on dev)
+- **AI models:** gpt-4o-mini via `OPENAI_API_KEY`, otherwise gemini-2.5-flash via `GEMINI_API_KEY` (verified live on production)
 - **Started:** 2026-09-21T14:06:36Z
-- **Last updated:** 2026-09-22T07:40:00Z
+- **Last updated:** 2026-09-22T07:45:00Z
 
 ## Log
 
@@ -131,3 +131,18 @@ produced it and each marked advisory. No gate was cleared.
 
 Production still holds a placeholder `GEMINI_API_KEY` and reports HTTP 400;
 only the dev deployment has a working key.
+
+### 2026-09-22 - PLACEHOLDER
+
+Production rejected its model key while dev worked. The connectivity check now
+describes a rejected key by length and leading characters only, never its
+value, which identified the stored string immediately as a pasted placeholder
+rather than a revoked or restricted key (`convex/diagnostics.ts`).
+
+Full chain verified on the production deployment: Firecrawl fetched a live
+document, gemini-2.5-flash returned seven structured findings across six valid
+gate keys, each attributed to the model that produced it and each marked
+advisory. No gate was cleared. Firecrawl, the model pre-screen, and AgentMail
+outbound now all pass against production.
+
+Inbound AgentMail replies remain the one unproven leg.

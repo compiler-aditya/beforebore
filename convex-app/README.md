@@ -17,8 +17,8 @@ The shared `ALDER-5` workspace is visible to every registered demo user. Do not 
 - **Convex:** Indexed projects, permits, evidence gates, inbox messages, and audit events; reactive queries, mutations, actions, and an HTTP webhook endpoint. The frontend is published through the Convex static-hosting component.
 - **Authentication:** Convex Auth v2 alpha with username + passkey. The relying-party ID and origin are derived from the deployment's `SITE_URL`; dev and production have separate credentials.
 - **Sponsor workflows:** Firecrawl extracts text from a supplied source URL; a structured-output model returns advisory findings — `gpt-4o-mini` when `OPENAI_API_KEY` is set, otherwise `gemini-2.5-flash` when only `GEMINI_API_KEY` is set; AgentMail sends a coordination request and routes a signature-verified webhook reply into the inbox. Every path returns an explicit `not_configured` state when its credentials are absent, and AI findings never clear an evidence gate. Each pre-screen and each outbound request writes an audit event, so the advisory result is durable and shared live rather than held in one browser.
-  - Verified live against production: **Firecrawl** (`v2/scrape`) and **AgentMail** outbound (a real request accepted with an upstream message id).
-  - Not yet verified: the **model pre-screen** (neither `OPENAI_API_KEY` nor `GEMINI_API_KEY` is on the deployment) and **inbound AgentMail replies** (webhook not registered).
+  - Verified live against production: **Firecrawl** (`v2/scrape`), the **model pre-screen** (a live URL yielded seven structured advisory findings), and **AgentMail** outbound (a real request accepted with an upstream message id).
+  - Not yet verified: **inbound AgentMail replies** (the webhook is not registered).
 
 ## Run locally
 
