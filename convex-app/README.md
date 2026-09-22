@@ -18,7 +18,7 @@ The shared `ALDER-5` workspace is visible to every registered demo user. Do not 
 - **Authentication:** Convex Auth v2 alpha with username + passkey. The relying-party ID and origin are derived from the deployment's `SITE_URL`; dev and production have separate credentials.
 - **Sponsor workflows:** Firecrawl extracts text from a supplied source URL; a structured-output model returns advisory findings — `gpt-4o-mini` when `OPENAI_API_KEY` is set, otherwise `gemini-2.5-flash` when only `GEMINI_API_KEY` is set; AgentMail sends a coordination request and routes a signature-verified webhook reply into the inbox. Every path returns an explicit `not_configured` state when its credentials are absent, and AI findings never clear an evidence gate. Each pre-screen and each outbound request writes an audit event, so the advisory result is durable and shared live rather than held in one browser.
   - Verified live against production: **Firecrawl** (`v2/scrape`), the **model pre-screen** (a live URL yielded seven structured advisory findings), and **AgentMail** outbound (a real request accepted with an upstream message id).
-  - Not yet verified: **inbound AgentMail replies** (the webhook is not registered).
+  - Not yet verified: **inbound AgentMail delivery**. The production webhook is registered and its signing secret is stored, but a self-directed probe did not emit AgentMail's inbound event. Verify it with a reply from an external mailbox before presenting it as live.
 
 ## Run locally
 
@@ -31,7 +31,7 @@ npm run dev -- -p 62731
 
 Configure `.env.local` with `CONVEX_DEPLOYMENT` and `NEXT_PUBLIC_CONVEX_URL` for your development deployment. Set `SITE_URL=http://localhost:62731`, `AUTH_PRIVATE_KEY`, and matching `AUTH_JWKS` in that Convex deployment. Never commit signing keys or API keys. A passkey registered for localhost will not work on the hosted domain.
 
-Optional Convex deployment environment variables: `FIRECRAWL_API_KEY`, `OPENAI_API_KEY` or `GEMINI_API_KEY` (plus optional `GEMINI_MODEL`), `AGENTMAIL_API_KEY`, `AGENTMAIL_INBOX_ID`, and `AGENTMAIL_WEBHOOK_SECRET`. The webhook route is `/agentmail/webhook`. Configure an AgentMail `message.received` webhook for that URL, and store its `whsec_` Svix signing secret as `AGENTMAIL_WEBHOOK_SECRET`. `scripts/agentmail-webhook.sh --prod <site-url>` registers that webhook scoped to the single coordination inbox and stores the secret without printing it. Signature handling passed a synthetic signed/invalid request test; an actual AgentMail delivery is still unverified. The Firecrawl action uses the current v2 scrape endpoint.
+Optional Convex deployment environment variables: `FIRECRAWL_API_KEY`, `OPENAI_API_KEY` or `GEMINI_API_KEY` (plus optional `GEMINI_MODEL`), `AGENTMAIL_API_KEY`, `AGENTMAIL_INBOX_ID`, and `AGENTMAIL_WEBHOOK_SECRET`. The webhook route is `/agentmail/webhook`. `scripts/agentmail-webhook.sh --prod <site-url>` registers an AgentMail `message.received` webhook scoped to the coordination inbox and stores its `whsec_` Svix signing secret without printing it. Re-running the script recognizes an already stored secret. Signature handling passed a synthetic signed/invalid request test; an actual AgentMail delivery remains unverified. The Firecrawl action uses the current v2 scrape endpoint.
 
 ## Verify and deploy
 
@@ -56,4 +56,4 @@ npx convex deploy --yes
 npx @convex-dev/static-hosting upload --build --prod --dist out
 ```
 
-`--build` supplies the production Convex URL to the Next.js static export. Production passkey registration, authenticated queries, repeat sign-in, the hosted page, assets, and the auth JWKS endpoint were verified on September 22, 2026. Live sponsor calls remain pending credentials.
+`--build` supplies the production Convex URL to the Next.js static export. Production passkey registration, authenticated queries, repeat sign-in, the hosted page, assets, and the auth JWKS endpoint were verified on September 22, 2026. Firecrawl, the configured model pre-screen, and AgentMail outbound were also verified live; only a provider-delivered inbound reply remains pending.

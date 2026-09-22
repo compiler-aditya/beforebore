@@ -28,8 +28,8 @@ A permit can look complete while one critical clearance is buried in an email th
 - [x] Firecrawl live on production (`v2/scrape` verified).
 - [x] AgentMail live outbound on production (real reviewer request accepted, upstream message id returned).
 - [x] Model pre-screen live on production via `GEMINI_API_KEY` (gemini-2.5-flash). Setting `OPENAI_API_KEY` switches it back to OpenAI with no code change, which is worth doing if you can — OpenAI is a judged sponsor.
-- [ ] Register inbound replies: `./scripts/agentmail-webhook.sh --prod https://tacit-anaconda-976.convex.site`, then reply to a `[BB-####]` thread and confirm it appears in the site inbox.
-- [ ] Re-upload the production frontend: `cd convex-app && npm run deploy`. The backend is current; the published static bundle predates the audit-trail and status-message fixes.
+- [ ] Verify an inbound reply. The production webhook is registered and its signing secret stored. From an external mailbox, reply to a `[BB-####]` request sent by AgentMail and confirm it appears in the site inbox. A self-directed test message did not emit an inbound event, so this remains unproven.
+- [x] Production frontend is current and its unique deployment asset URLs load successfully.
 - [ ] Record and link an actual video under three minutes. A script is not a video.
 - [ ] Share the build publicly and tag the hackathon accounts if desired.
 - [ ] Submit the repo, app, and video through the hackathon form before September 22, 2026, 12:00 PM PT. Submission has **not** been filed.

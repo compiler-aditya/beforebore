@@ -12,7 +12,7 @@
 - **Auth:** Convex Auth
 - **AI models:** gpt-4o-mini via `OPENAI_API_KEY`, otherwise gemini-2.5-flash via `GEMINI_API_KEY` (verified live on production)
 - **Started:** 2026-09-21T14:06:36Z
-- **Last updated:** 2026-09-22T07:55:00Z
+- **Last updated:** 2026-09-22T11:59:31Z
 
 ## Log
 
@@ -163,3 +163,24 @@ can no longer outlive a deploy (`convex-app/next.config.ts`).
 Verified on production: the page loads with every asset returning 200, and the
 served dashboard bundle contains the current status-message and pre-screen
 labels.
+
+### 2026-09-22 - d04df20
+
+Registered the production AgentMail `message.received` webhook and stored its
+Svix signing secret in the Convex environment without writing the value to the
+repository. Corrected inbound timestamps to use the provider's documented
+`message.timestamp` field. A real self-directed request
+was accepted by AgentMail, but did not create an inbound event; therefore the
+inbound provider delivery is still explicitly unverified. Standard production
+passkey/auth smoke checks and the production build passed
+(`convex-app/convex/http.ts`, `convex-app/convex/diagnostics.ts`,
+`convex-app/scripts/agentmail-webhook.sh`,
+`convex-app/scripts/auth-smoke.mjs`).
+
+### 2026-09-22 - f568c65
+
+Made repeated AgentMail webhook setup safe: when the provider does not return a
+webhook secret for an existing endpoint, the local setup script checks whether
+the secret is already stored in the selected Convex deployment and exits
+successfully without printing the value. The idempotent production re-run
+passed (`convex-app/scripts/agentmail-webhook.sh`).
