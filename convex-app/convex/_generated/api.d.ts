@@ -14,6 +14,7 @@ import type * as authz from "../authz.js";
 import type * as coordination from "../coordination.js";
 import type * as dashboard from "../dashboard.js";
 import type * as demo from "../demo.js";
+import type * as diagnostics from "../diagnostics.js";
 import type * as http from "../http.js";
 import type * as model from "../model.js";
 import type * as permits from "../permits.js";
@@ -33,6 +34,7 @@ declare const fullApi: ApiFromModules<{
   coordination: typeof coordination;
   dashboard: typeof dashboard;
   demo: typeof demo;
+  diagnostics: typeof diagnostics;
   http: typeof http;
   model: typeof model;
   permits: typeof permits;

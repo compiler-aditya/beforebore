@@ -61,6 +61,94 @@ export const getPermitContext = internalQuery({
   },
 });
 
+type CoordinationResult = {
+  status: "not_configured" | "sent" | "failed";
+  messageId: string | null;
+  summary: string;
+};
+
+/**
+ * Sends one reviewer request through AgentMail. Both the signed-in dashboard
+ * action and the operator connectivity check use this same path, so a passing
+ * check exercises the code the demo actually runs.
+ */
+export async function sendCoordinationEmail(input: {
+  permitNumber: string;
+  location: string;
+  reviewerRole: string;
+  subject: string;
+  body: string;
+}): Promise<CoordinationResult> {
+  const apiKey = env.AGENTMAIL_API_KEY;
+  const inboxId = env.AGENTMAIL_INBOX_ID;
+  if (!apiKey || !inboxId) {
+    return {
+      status: "not_configured",
+      messageId: null,
+      summary:
+        "AgentMail is not configured. Add AGENTMAIL_API_KEY and AGENTMAIL_INBOX_ID to enable live reviewer requests.",
+    };
+  }
+
+  const reviewerRole = clean(input.reviewerRole, 120);
+  const subject = clean(input.subject, 180);
+  const body = clean(input.body, 4_000);
+  if (!reviewerRole || !subject || !body) {
+    return {
+      status: "failed",
+      messageId: null,
+      summary: "Reviewer role, subject, and body are required.",
+    };
+  }
+
+  try {
+    // AgentMail gives this app one controlled sender inbox. The inbox id is
+    // also used as the recipient fallback until role-to-address routing is
+    // configured, keeping reviewer requests inside the project inbox.
+    const response = await fetchWithTimeout(
+      `https://api.agentmail.to/v0/inboxes/${encodeURIComponent(inboxId)}/messages/send`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          to: inboxId,
+          subject: `[${input.permitNumber}] ${subject}`,
+          text: `Reviewer role: ${reviewerRole}\nLocation: ${input.location}\n\n${body}`,
+        }),
+      },
+      8_000,
+    );
+    if (!response.ok) {
+      return {
+        status: "failed",
+        messageId: null,
+        summary: `AgentMail rejected the request (HTTP ${response.status}).`,
+      };
+    }
+    const payload: unknown = await response.json();
+    const messageId = extractMessageId(payload);
+    return {
+      status: "sent",
+      messageId,
+      summary: messageId
+        ? `Request sent to the AgentMail coordination inbox for ${reviewerRole}.`
+        : "AgentMail accepted the request, but did not return a message id.",
+    };
+  } catch (error) {
+    return {
+      status: "failed",
+      messageId: null,
+      summary:
+        error instanceof Error
+          ? `AgentMail request failed: ${clean(error.message, 180)}.`
+          : "AgentMail request failed.",
+    };
+  }
+}
+
 export const sendRequest = action({
   args: {
     permitId: v.id("permits"),
@@ -69,7 +157,7 @@ export const sendRequest = action({
     body: v.string(),
   },
   returns: coordinationResultValidator,
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<CoordinationResult> => {
     await requireIdentity(ctx);
     const permit = await ctx.runQuery(internal.coordination.getPermitContext, {
       permitId: args.permitId,
@@ -82,73 +170,12 @@ export const sendRequest = action({
       };
     }
 
-    const apiKey = env.AGENTMAIL_API_KEY;
-    const inboxId = env.AGENTMAIL_INBOX_ID;
-    if (!apiKey || !inboxId) {
-      return {
-        status: "not_configured" as const,
-        messageId: null,
-        summary:
-          "AgentMail is not configured. Add AGENTMAIL_API_KEY and AGENTMAIL_INBOX_ID to enable live reviewer requests.",
-      };
-    }
-
-    const reviewerRole = clean(args.reviewerRole, 120);
-    const subject = clean(args.subject, 180);
-    const body = clean(args.body, 4_000);
-    if (!reviewerRole || !subject || !body) {
-      return {
-        status: "failed" as const,
-        messageId: null,
-        summary: "Reviewer role, subject, and body are required.",
-      };
-    }
-
-    try {
-      // AgentMail gives this app one controlled sender inbox. The inbox id is
-      // also used as the recipient fallback until role-to-address routing is
-      // configured, keeping reviewer requests inside the project inbox.
-      const response = await fetchWithTimeout(
-        `https://api.agentmail.to/v0/inboxes/${encodeURIComponent(inboxId)}/messages/send`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            to: inboxId,
-            subject: `[${permit.permitNumber}] ${subject}`,
-            text: `Reviewer role: ${reviewerRole}\nLocation: ${permit.location}\n\n${body}`,
-          }),
-        },
-        8_000,
-      );
-      if (!response.ok) {
-        return {
-          status: "failed" as const,
-          messageId: null,
-          summary: `AgentMail rejected the request (HTTP ${response.status}).`,
-        };
-      }
-      const payload: unknown = await response.json();
-      const messageId = extractMessageId(payload);
-      return {
-        status: "sent" as const,
-        messageId,
-        summary: messageId
-          ? `Request sent to the AgentMail coordination inbox for ${reviewerRole}.`
-          : "AgentMail accepted the request, but did not return a message id.",
-      };
-    } catch (error) {
-      return {
-        status: "failed" as const,
-        messageId: null,
-        summary:
-          error instanceof Error
-            ? `AgentMail request failed: ${clean(error.message, 180)}.`
-            : "AgentMail request failed.",
-      };
-    }
+    return await sendCoordinationEmail({
+      permitNumber: permit.permitNumber,
+      location: permit.location,
+      reviewerRole: args.reviewerRole,
+      subject: args.subject,
+      body: args.body,
+    });
   },
 });

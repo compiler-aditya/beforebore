@@ -10,9 +10,9 @@
 - **Components:** @convex-dev/auth, @convex-dev/static-hosting
 - **Convex features:** schema, indexes, queries, mutations, actions, HTTP actions, realtime queries
 - **Auth:** Convex Auth
-- **AI models:** gpt-4o-mini (optional OpenAI pre-screen action; live call not yet verified)
+- **AI models:** gpt-4o-mini (OpenAI pre-screen action; awaiting an OPENAI_API_KEY on the deployment)
 - **Started:** 2026-09-21T14:06:36Z
-- **Last updated:** 2026-09-22T05:19:35Z
+- **Last updated:** 2026-09-22T07:05:00Z
 
 ## Log
 
@@ -52,3 +52,25 @@ A synthetic signed webhook without a permit number returned the expected ignored
 result, while a tampered signature returned unauthorized. No live provider
 round trip is claimed (`convex-app/convex/prescreen.ts`,
 `convex-app/convex/http.ts`).
+
+### 2026-09-22 - sponsor connectivity
+
+Added an operator-only connectivity check and moved the AgentMail send onto a
+shared helper so the check exercises the same code path as the signed-in
+dashboard (`convex/diagnostics.ts`, `convex/coordination.ts`).
+
+Verified against the production deployment:
+
+- **Firecrawl** — live. `POST https://api.firecrawl.dev/v2/scrape` returned
+  167 markdown characters for a control URL.
+- **AgentMail** — live outbound. Three inboxes are visible on the account;
+  `bewilderedguide332@agentmail.to` is now `AGENTMAIL_INBOX_ID`, and a real
+  reviewer request was accepted with an upstream message id.
+- **OpenAI** — still unconfigured. `OPENAI_API_KEY` is not set on either
+  deployment, so `prescreen.run` continues to return `not_configured` rather
+  than a fabricated result.
+
+Inbound replies are not live yet. `scripts/agentmail-webhook.sh` registers the
+`message.received` webhook against `/agentmail/webhook`, scoped to the single
+coordination inbox, and stores the signing secret as
+`AGENTMAIL_WEBHOOK_SECRET` without printing it. It has not been run.
