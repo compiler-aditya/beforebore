@@ -53,7 +53,7 @@ result, while a tampered signature returned unauthorized. No live provider
 round trip is claimed (`convex-app/convex/prescreen.ts`,
 `convex-app/convex/http.ts`).
 
-### 2026-09-22 - sponsor connectivity
+### 2026-09-22 - dffaf10
 
 Added an operator-only connectivity check and moved the AgentMail send onto a
 shared helper so the check exercises the same code path as the signed-in
@@ -63,9 +63,9 @@ Verified against the production deployment:
 
 - **Firecrawl** — live. `POST https://api.firecrawl.dev/v2/scrape` returned
   167 markdown characters for a control URL.
-- **AgentMail** — live outbound. Three inboxes are visible on the account;
-  `bewilderedguide332@agentmail.to` is now `AGENTMAIL_INBOX_ID`, and a real
-  reviewer request was accepted with an upstream message id.
+- **AgentMail** — live outbound. The coordination inbox is configured as
+  `AGENTMAIL_INBOX_ID`, and a real reviewer request was accepted with an
+  upstream message id.
 - **OpenAI** — still unconfigured. `OPENAI_API_KEY` is not set on either
   deployment, so `prescreen.run` continues to return `not_configured` rather
   than a fabricated result.
@@ -75,7 +75,7 @@ Inbound replies are not live yet. `scripts/agentmail-webhook.sh` registers the
 coordination inbox, and stores the signing secret as
 `AGENTMAIL_WEBHOOK_SECRET` without printing it. It has not been run.
 
-### 2026-09-22 - durable AI and coordination events
+### 2026-09-22 - 6561ab0
 
 Pre-screen results and reviewer requests were previously client-only: a finding
 disappeared on refresh and a second viewer never saw it. Both now write an

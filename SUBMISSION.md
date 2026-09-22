@@ -29,6 +29,7 @@ A permit can look complete while one critical clearance is buried in an email th
 - [x] AgentMail live outbound on production (real reviewer request accepted, upstream message id returned).
 - [ ] Set `OPENAI_API_KEY` on production, then re-run `npx convex run diagnostics:sponsorCheck '{}' --prod`.
 - [ ] Register inbound replies: `./scripts/agentmail-webhook.sh --prod https://tacit-anaconda-976.convex.site`, then reply to a `[BB-####]` thread and confirm it appears in the site inbox.
+- [ ] Re-upload the production frontend: `cd convex-app && npm run deploy`. The backend is current; the published static bundle predates the audit-trail and status-message fixes.
 - [ ] Record and link an actual video under three minutes. A script is not a video.
 - [ ] Share the build publicly and tag the hackathon accounts if desired.
 - [ ] Submit the repo, app, and video through the hackathon form before September 22, 2026, 12:00 PM PT. Submission has **not** been filed.
