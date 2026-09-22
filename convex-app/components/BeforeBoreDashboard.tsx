@@ -388,6 +388,7 @@ function BeforeBoreDashboardContent({ liveEnabled, previewMode = false, onExitPr
   const [isPrescreening, setIsPrescreening] = useState(false);
   const [prescreenStatus, setPrescreenStatus] = useState<string | null>(null);
   const [isRequestingReview, setIsRequestingReview] = useState(false);
+  const [coordinationStatus, setCoordinationStatus] = useState<string | null>(null);
   const dashboard = useQuery(api.dashboard.get, liveEnabled ? { projectCode: PROJECT_CODE } : "skip");
   const simulateNextDemoGate = useMutation(api.permits.simulateNextDemoGate);
   const seedDemo = useMutation(api.demo.seedDemo);
@@ -475,7 +476,13 @@ function BeforeBoreDashboardContent({ liveEnabled, previewMode = false, onExitPr
     setPrescreenStatus(null);
     try {
       const result = await runPrescreen({ permitId: selectedLiveId, sourceUrl: sourceUrl.trim() });
-      setPrescreenStatus(`${result.status}: ${result.findings[0]?.summary ?? "No evidence findings returned."}`);
+      const label =
+        result.status === "completed"
+          ? `Advisory · ${result.findings.length} finding${result.findings.length === 1 ? "" : "s"}`
+          : result.status === "not_configured"
+            ? "Pre-screen not configured"
+            : "Pre-screen failed";
+      setPrescreenStatus(`${label} — ${result.findings[0]?.summary ?? "No evidence findings returned."}`);
     } catch (caught) {
       setPrescreenStatus(caught instanceof Error ? caught.message : "The pre-screen could not run.");
     } finally {
@@ -490,6 +497,7 @@ function BeforeBoreDashboardContent({ liveEnabled, previewMode = false, onExitPr
     }
     setIsRequestingReview(true);
     setActionError(null);
+    setCoordinationStatus(null);
     try {
       const result = await sendReviewRequest({
         permitId: selectedLiveId,
@@ -497,7 +505,13 @@ function BeforeBoreDashboardContent({ liveEnabled, previewMode = false, onExitPr
         subject: `${selected.id} clearance request`,
         body: `Please review the proposed penetration at ${selected.location}, ${selected.level}. Reply with evidence or a clear action; BeforeBore never treats silence as approval.`,
       });
-      setActionError(result.summary);
+      // A delivered request is not an error. Only a refusal or a missing
+      // configuration belongs in the alert region.
+      if (result.status === "sent") {
+        setCoordinationStatus(`${result.summary} Reply to that thread with ${selected.id} in the subject to see it arrive here.`);
+      } else {
+        setActionError(result.summary);
+      }
     } catch (caught) {
       setActionError(caught instanceof Error ? caught.message : "The reviewer request could not be sent.");
     } finally {
@@ -713,6 +727,7 @@ function BeforeBoreDashboardContent({ liveEnabled, previewMode = false, onExitPr
                   </div>
                   {prescreenStatus && <p className="mt-2 text-[10px] leading-4 text-sky-100/80" role="status">{prescreenStatus}</p>}
                   <Button type="button" variant="ghost" onClick={handleRequestReview} disabled={isRequestingReview || !selectedLiveId} className="mt-2 h-8 px-0 text-[10px] font-semibold text-amber-300 hover:bg-transparent hover:text-amber-200 disabled:opacity-40">{isRequestingReview ? <Loader2 className="animate-spin" /> : <Mail />} {isRequestingReview ? "Sending inbox request…" : "Send to coordination inbox"}</Button>
+                  {coordinationStatus && <p className="mt-1 rounded-lg border border-emerald-400/25 bg-emerald-400/[0.07] px-3 py-2 text-[10px] leading-4 text-emerald-100" role="status">{coordinationStatus}</p>}
                 </div>
 
                 <div className="mt-5 grid gap-3 sm:grid-cols-[1fr_auto]">

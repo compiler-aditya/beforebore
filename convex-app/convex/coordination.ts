@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 
 import { internal } from "./_generated/api";
-import { action, env, internalQuery } from "./_generated/server";
+import { action, env, internalMutation, internalQuery } from "./_generated/server";
 import { requireIdentity } from "./authz";
 
 const coordinationResultValidator = v.object({
@@ -149,6 +149,52 @@ export async function sendCoordinationEmail(input: {
   }
 }
 
+/**
+ * Records an outbound reviewer request on the permit's audit trail, so every
+ * authorized viewer sees who asked whom for what, in realtime.
+ */
+export const recordRequest = internalMutation({
+  args: {
+    permitId: v.id("permits"),
+    actorSubject: v.string(),
+    reviewerRole: v.string(),
+    subject: v.string(),
+    status: v.union(
+      v.literal("not_configured"),
+      v.literal("sent"),
+      v.literal("failed"),
+    ),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const permit = await ctx.db.get("permits", args.permitId);
+    if (permit === null) return null;
+
+    const actorId = ctx.db.normalizeId("users", args.actorSubject);
+    const actor = actorId === null ? null : await ctx.db.get("users", actorId);
+    const outcome =
+      args.status === "sent"
+        ? "sent"
+        : args.status === "not_configured"
+          ? "not sent — AgentMail is not configured"
+          : "not sent — AgentMail rejected the request";
+
+    await ctx.db.insert("auditEvents", {
+      projectId: permit.projectId,
+      permitId: permit._id,
+      eventType: "coordination_sent",
+      actorName: actor === null ? "Coordination" : actor.username,
+      actorUserId: actorId ?? undefined,
+      summary: clean(
+        `Clearance request to ${args.reviewerRole} ${outcome}: "${args.subject}". A request is not an approval.`,
+        260,
+      ),
+      createdAt: Date.now(),
+    });
+    return null;
+  },
+});
+
 export const sendRequest = action({
   args: {
     permitId: v.id("permits"),
@@ -158,7 +204,7 @@ export const sendRequest = action({
   },
   returns: coordinationResultValidator,
   handler: async (ctx, args): Promise<CoordinationResult> => {
-    await requireIdentity(ctx);
+    const identity = await requireIdentity(ctx);
     const permit = await ctx.runQuery(internal.coordination.getPermitContext, {
       permitId: args.permitId,
     });
@@ -170,12 +216,20 @@ export const sendRequest = action({
       };
     }
 
-    return await sendCoordinationEmail({
+    const result = await sendCoordinationEmail({
       permitNumber: permit.permitNumber,
       location: permit.location,
       reviewerRole: args.reviewerRole,
       subject: args.subject,
       body: args.body,
     });
+    await ctx.runMutation(internal.coordination.recordRequest, {
+      permitId: args.permitId,
+      actorSubject: identity.subject,
+      reviewerRole: clean(args.reviewerRole, 120),
+      subject: clean(args.subject, 180),
+      status: result.status,
+    });
+    return result;
   },
 });

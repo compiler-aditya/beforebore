@@ -1,7 +1,10 @@
 import { v } from "convex/values";
 
+import type { GenericActionCtx } from "convex/server";
+
 import { internal } from "./_generated/api";
-import { action, env, internalQuery } from "./_generated/server";
+import type { DataModel, Id } from "./_generated/dataModel";
+import { action, env, internalMutation, internalQuery } from "./_generated/server";
 import { requireIdentity } from "./authz";
 
 const severityValidator = v.union(
@@ -210,14 +213,89 @@ export const getPermitContext = internalQuery({
   },
 });
 
+/**
+ * Records that a pre-screen ran, so the advisory result is durable, visible to
+ * every authorized viewer in realtime, and auditable after the fact. The event
+ * deliberately restates that the finding does not clear a gate.
+ */
+export const recordRun = internalMutation({
+  args: {
+    permitId: v.id("permits"),
+    actorSubject: v.string(),
+    sourceUrl: v.string(),
+    status: v.union(
+      v.literal("not_configured"),
+      v.literal("completed"),
+      v.literal("failed"),
+    ),
+    findings: v.array(findingValidator),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const permit = await ctx.db.get("permits", args.permitId);
+    if (permit === null) return null;
+
+    const actorId = ctx.db.normalizeId("users", args.actorSubject);
+    const actor = actorId === null ? null : await ctx.db.get("users", actorId);
+
+    const blocking = args.findings.filter(
+      (finding) => finding.severity === "blocked",
+    ).length;
+    const headline =
+      args.status === "completed"
+        ? `${args.findings.length} advisory finding${args.findings.length === 1 ? "" : "s"}${blocking > 0 ? `, ${blocking} marked blocking` : ""}`
+        : args.status === "not_configured"
+          ? "pre-screen providers are not configured"
+          : "pre-screen did not complete";
+
+    await ctx.db.insert("auditEvents", {
+      projectId: permit.projectId,
+      permitId: permit._id,
+      eventType: "prescreen_recorded",
+      actorName: actor === null ? "AI pre-screen" : `AI pre-screen · run by ${actor.username}`,
+      actorUserId: actorId ?? undefined,
+      summary: boundedText(
+        `Pre-screened ${args.sourceUrl}: ${headline}. Advisory only — no gate was cleared.`,
+        260,
+      ),
+      createdAt: Date.now(),
+    });
+    return null;
+  },
+});
+
 export const run = action({
   args: {
     permitId: v.id("permits"),
     sourceUrl: v.string(),
   },
   returns: resultValidator,
-  handler: async (ctx, args) => {
-    await requireIdentity(ctx);
+  handler: async (ctx, args): Promise<PrescreenResult> => {
+    const identity = await requireIdentity(ctx);
+    const result = await computePrescreen(ctx, args);
+    // Record every outcome, including "not configured" and failures, so the
+    // audit trail shows what was attempted rather than only what succeeded.
+    await ctx.runMutation(internal.prescreen.recordRun, {
+      permitId: args.permitId,
+      actorSubject: identity.subject,
+      sourceUrl: args.sourceUrl.trim().slice(0, 2_000),
+      status: result.status,
+      findings: result.findings,
+    });
+    return result;
+  },
+});
+
+type PrescreenResult = {
+  status: "not_configured" | "completed" | "failed";
+  findings: Finding[];
+};
+
+async function computePrescreen(
+  ctx: GenericActionCtx<DataModel>,
+  args: { permitId: Id<"permits">; sourceUrl: string },
+): Promise<PrescreenResult> {
+  {
     const sourceUrl = validateSourceUrl(args.sourceUrl.trim());
     if (sourceUrl === null) {
       return {
@@ -395,5 +473,5 @@ export const run = action({
         ),
       };
     }
-  },
-});
+  }
+}

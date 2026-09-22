@@ -39,5 +39,7 @@ export const auditEventTypeValidator = v.union(
   v.literal("demo_gate_simulated"),
   v.literal("status_changed"),
   v.literal("evidence_received"),
+  v.literal("prescreen_recorded"),
+  v.literal("coordination_sent"),
   v.literal("seeded"),
 );

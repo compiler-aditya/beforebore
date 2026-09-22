@@ -12,7 +12,7 @@
 - **Auth:** Convex Auth
 - **AI models:** gpt-4o-mini (OpenAI pre-screen action; awaiting an OPENAI_API_KEY on the deployment)
 - **Started:** 2026-09-21T14:06:36Z
-- **Last updated:** 2026-09-22T07:05:00Z
+- **Last updated:** 2026-09-22T07:35:00Z
 
 ## Log
 
@@ -74,3 +74,24 @@ Inbound replies are not live yet. `scripts/agentmail-webhook.sh` registers the
 `message.received` webhook against `/agentmail/webhook`, scoped to the single
 coordination inbox, and stores the signing secret as
 `AGENTMAIL_WEBHOOK_SECRET` without printing it. It has not been run.
+
+### 2026-09-22 - durable AI and coordination events
+
+Pre-screen results and reviewer requests were previously client-only: a finding
+disappeared on refresh and a second viewer never saw it. Both now write an
+audit event inside the same transaction path, so the advisory result and the
+outbound request are durable, shared live with every authorized viewer, and
+attributable to the signed-in user (`convex/prescreen.ts`,
+`convex/coordination.ts`, `convex/model.ts`).
+
+Every pre-screen outcome is recorded, including `not_configured` and failures,
+so the trail shows what was attempted rather than only what succeeded. Each
+summary restates the boundary: an advisory finding clears no gate, and a
+request is not an approval.
+
+Fixed a dashboard defect where a *successful* AgentMail send was rendered in
+the red error region, and replaced raw status strings in the pre-screen
+readout with readable labels (`components/BeforeBoreDashboard.tsx`).
+
+Verified on the dev deployment: both new event types insert and read back with
+the expected actor, type, and summary. Type-check and lint are clean.
