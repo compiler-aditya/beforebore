@@ -112,7 +112,7 @@ OpenAI, and says plainly when neither key is set. Verified on the dev
 deployment: Firecrawl and AgentMail pass; the model check correctly reports
 that no model key is configured.
 
-### 2026-09-22 - PLACEHOLDER
+### 2026-09-22 - d464ebb
 
 The Gemini pre-screen returned no findings against a real document while
 succeeding on a short test prompt. Gemini 2.5 spends `maxOutputTokens` on
