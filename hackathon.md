@@ -147,7 +147,7 @@ outbound now all pass against production.
 
 Inbound AgentMail replies remain the one unproven leg.
 
-### 2026-09-22 - PLACEHOLDER
+### 2026-09-22 - 336cd9f
 
 Published the current frontend to the production `convex.site` host, then hit
 a CDN failure worth recording. Convex static hosting caches a miss with
